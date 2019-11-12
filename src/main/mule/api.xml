@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+    <http:listener-config name="marketing-data-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <http:request-config name="HTTP_Auth_Request" doc:name="HTTP Request configuration" doc:id="98acc7f6-87b0-403e-b73f-d4b235705137">
+        <http:request-connection protocol="HTTPS" host="${sfmc.auth_host}" port="443" />
+    </http:request-config>
+    <wsc:config name="Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="4ccbf5a0-a7c3-4700-a368-274199f58352">
+        <wsc:connection wsdlLocation="SFMC.wsdl" service="PartnerAPI" port="Soap" address="https://${sfmc.soap_host}/Service.asmx">
+            <wsc:web-service-security actor="http://schemas.xmlsoap.org/soap/actor/next" />
+        </wsc:connection>
+    </wsc:config>
+    <apikit:config name="marketing-data-api-config" raml="api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <api-gateway:autodiscovery apiId="15847196" doc:name="API Autodiscovery" doc:id="e5ddf478-819d-4001-b1e5-300041adaf50" flowRef="marketing-data-api-main" />
+    <configuration-properties doc:name="Configuration properties" doc:id="d16d5f2f-0e15-40ef-98d6-bcf484eb4e6a" file="mule-properties.yaml" />
+    <flow name="marketing-data-api-main">
+        <http:listener config-ref="marketing-data-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="marketing-data-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="sfmc-api-examplesFlow" doc:id="f2706c9c-c6c6-449f-80aa-866026436016">
+        <http:listener doc:name="Listener" doc:id="965d0044-8c54-4db6-9972-10051677ed7c" config-ref="marketing-data-api-httpListenerConfig" path="/*" />
+        <http:load-static-resource doc:name="Load static resource" doc:id="7c7ac17d-29c9-4e84-adc3-31fbec8cf4e9" resourceBasePath="${app.home}/web/" />
+    </flow>
+    <flow name="sysco-marketing-data-api-console">
+        <http:listener config-ref="marketing-data-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]" />
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="marketing-data-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xsi:schemaLocation=" http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\data\emails:marketing-data-api-config">
+		<ee:transform doc:name="Transform Message" doc:id="080ae0f9-8dad-40ca-8afe-0e1a1a100542">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"grant_type": "client_credentials",
+	"client_id": p('sfmc.app.client_id'),
+	"client_secret": p('sfmc.app.client_secret')
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<http:request method="POST" doc:name="Request" doc:id="516c0714-dea3-4282-9201-e9910f1113a7" config-ref="HTTP_Auth_Request" path="/v2/token" target="access_token" targetValue="#[payload.access_token]" />
+		<ee:transform doc:name="Transform Message" doc:id="9a7ff779-551e-4a82-ba6e-ae98f8d89480">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://exacttarget.com/wsdl/partnerAPI
+---
+{
+	ns0#RetrieveRequestMsg: {
+		ns0#RetrieveRequest: {
+			ns0#ObjectType: "Send",
+			ns0#Properties: "ID"	,
+			ns0#Properties: "Client.ID",
+			ns0#Properties: "EmailName",
+			ns0#Properties: "FromAddress",
+			ns0#Properties: "FromName",
+			ns0#Properties: "Subject",
+			ns0#Properties: "NumberSent",
+			ns0#Properties: "NumberDelivered",
+			ns0#Properties: "NumberExcluded",
+			ns0#Properties: "UniqueOpens",
+			ns0#Properties: "UniqueClicks",
+			ns0#Properties: "SendDate"
+		}
+	}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<wsc:consume operation="Retrieve" doc:name="Retrieve" doc:id="9c7a01af-0837-4a31-9a27-7bf7276d1d82" config-ref="Web_Service_Consumer_Config">
+            <wsc:message>
+                <wsc:headers><![CDATA[#[%dw 2.0
+output application/xml
+ns soap http://service.soap.clients.namespace/
+---
+"headers": {
+	soap#fueloauth: vars.access_token
+}]]]></wsc:headers>
+            </wsc:message>
+        </wsc:consume>
+		<logger level="INFO" doc:name="Logger" doc:id="ca54ba05-f724-4441-9b7c-b5d003b60f01" />
+		<ee:transform doc:name="Transform Message" doc:id="33da0e4a-f9e2-4346-9f86-6ef32eb7e106">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+ns ns0 http://exacttarget.com/wsdl/partnerAPI
+---
+payload.body.ns0#RetrieveResponseMsg.*ns0#Results map ( result , indexOfResult ) -> {
+	account_id: result.ns0#Client.ns0#ID as Number default 0,
+	account_name: result.ns0#FromName,
+	number_sent: result.ns0#NumberSent as Number default 0,
+	send_date: now() as String,
+	number_delivered: result.ns0#NumberDelivered as Number default 0,
+	number_excluded: result.ns0#NumberExcluded as Number default 0,
+	unique_clicks: result.ns0#UniqueClicks as Number default 0,
+	unique_opens: result.ns0#UniqueOpens as Number default 0
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>

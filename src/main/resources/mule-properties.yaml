@@ -1,0 +1,6 @@
+sfmc:
+  auth_host: "mclr6tcx2jdlc8y7yb25t334x2n4.auth.marketingcloudapis.com"
+  soap_host: "mclr6tcx2jdlc8y7yb25t334x2n4.soap.marketingcloudapis.com"
+  app:
+    client_id: ""
+    client_secret: ""

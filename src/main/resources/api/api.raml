@@ -1,0 +1,68 @@
+#%RAML 1.0
+title: Salesforce Marketing Cloud API
+description: This API provides data around Salesforce Marketing Cloud
+mediaType:
+  - application/json
+version: "1.0"
+protocols:
+  - HTTP
+/data/emails:
+  get:
+    securedBy: []
+    displayName: E-mail Data
+    description: Retrieve data around e-mails sent from Marketing Cloud
+    responses:
+      "200":
+        body:
+          application/json:
+            type: Emails
+securedBy: []
+types:
+  Emails:
+    type: array
+    items:
+      type: Email
+  Email:
+    example:
+      strict: true
+      value:
+        account_id: 1
+        account_name: Business Group 1
+        number_sent: 1
+        number_delivered: 1
+        number_excluded: 1
+        unique_clicks: 1
+        unique_opens: 1
+        send_date: 2019-10-22
+    properties:
+      account_id:
+        example: 1
+        type: number
+        format: int
+      account_name:
+        example: Business Group 1
+        type: string
+      number_sent:
+        example: 1
+        type: number
+        format: int
+      number_delivered:
+        example: 1
+        type: number
+        format: int
+      number_excluded:
+        example: 1
+        type: number
+        format: int
+      unique_clicks:
+        example: 1
+        type: number
+        format: int
+      unique_opens:
+        example: 1
+        type: number
+        format: int
+      send_date:
+        default: 2019-10-22
+        example: 2019-10-22
+        type: date-only
